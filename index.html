@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0f0f12" />
+<title>Color Date</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="icons/icon.svg" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- HOME -->
+  <section id="screen-home" class="screen">
+    <h1 class="logo">Color&nbsp;Date</h1>
+    <p class="tagline">Dos colores. 24 horas. A ver quién se acerca más.</p>
+
+    <div class="card">
+      <h2>Nueva partida</h2>
+      <label for="photo-limit">Nº de fotos por persona (1-30)</label>
+      <input id="photo-limit" type="number" inputmode="numeric" min="1" max="30" value="10" />
+      <button id="btn-create" class="btn btn-primary">Crear partida</button>
+    </div>
+
+    <div class="card">
+      <h2>Unirse a partida</h2>
+      <label for="join-code">Código de partida</label>
+      <input id="join-code" type="text" inputmode="text" maxlength="8" autocapitalize="characters" placeholder="AB12CD34" />
+      <button id="btn-join" class="btn">Unirme</button>
+    </div>
+
+    <p id="home-error" class="error" hidden></p>
+  </section>
+
+  <!-- WAITING -->
+  <section id="screen-waiting" class="screen" hidden>
+    <h1 class="logo small">Color&nbsp;Date</h1>
+    <div class="swatch-big" id="waiting-swatch"></div>
+    <p class="color-name" id="waiting-color-name"></p>
+    <p class="hint">Ese es tu color. Compártelo con tu pareja para que se una:</p>
+    <div class="code-box" id="waiting-code"></div>
+    <button id="btn-copy-code" class="btn">Copiar código</button>
+    <p class="hint spinner-line"><span class="dot"></span> Esperando a que se una...</p>
+  </section>
+
+  <!-- PLAYING -->
+  <section id="screen-playing" class="screen" hidden>
+    <header class="game-header">
+      <div class="swatch-small" id="play-swatch"></div>
+      <div class="game-header-info">
+        <p class="color-name" id="play-color-name"></p>
+        <p class="countdown" id="play-countdown">--:--:--</p>
+      </div>
+    </header>
+
+    <div class="progress-row">
+      <div class="progress-item">
+        <span class="progress-label">Tú</span>
+        <span class="progress-value" id="play-my-count">0/0</span>
+      </div>
+      <div class="progress-item">
+        <span class="progress-label">Tu pareja</span>
+        <span class="progress-value" id="play-partner-count">0/0</span>
+      </div>
+    </div>
+
+    <div class="capture-row">
+      <label class="btn btn-primary capture-btn">
+        📷 Cámara
+        <input id="input-camera" type="file" accept="image/*" capture="environment" hidden />
+      </label>
+      <label class="btn capture-btn">
+        🖼️ Galería
+        <input id="input-gallery" type="file" accept="image/*" hidden />
+      </label>
+    </div>
+
+    <p id="play-status" class="hint" hidden></p>
+
+    <div class="grid" id="play-grid"></div>
+  </section>
+
+  <!-- REVEAL -->
+  <section id="screen-reveal" class="screen" hidden>
+    <h1 class="logo small">¡Revelado!</h1>
+
+    <div class="reveal-winner" id="reveal-winner"></div>
+
+    <div class="reveal-players" id="reveal-players"></div>
+  </section>
+
+  <div id="toast" class="toast" hidden></div>
+</div>
+
+<script src="config.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

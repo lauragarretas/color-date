@@ -69,6 +69,18 @@ function randomColor(excludeName) {
   return { hex: hslToHex(h, s, l), name: base.name };
 }
 
+function uuidv4() {
+  // crypto.randomUUID() exige contexto seguro (https/localhost); en pruebas
+  // por IP local en http no está disponible, así que usamos este fallback
+  // basado en crypto.getRandomValues(), que sí funciona en http.
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b].map((x) => x.toString(16).padStart(2, "0"));
+  return `${h[0]}${h[1]}${h[2]}${h[3]}-${h[4]}${h[5]}-${h[6]}${h[7]}-${h[8]}${h[9]}-${h[10]}${h[11]}${h[12]}${h[13]}${h[14]}${h[15]}`;
+}
+
 function randomCode(len = 8) {
   let out = "";
   for (let i = 0; i < len; i++) out += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
@@ -80,7 +92,7 @@ function randomCode(len = 8) {
 function getDeviceId() {
   let id = localStorage.getItem(DEVICE_KEY);
   if (!id) {
-    id = crypto.randomUUID();
+    id = uuidv4();
     localStorage.setItem(DEVICE_KEY, id);
   }
   return id;
@@ -369,7 +381,7 @@ async function handleFile(file) {
   try {
     const { blob, avgHex } = await processImage(file);
     const similarity = similarityPct(avgHex, me.color_hex);
-    const path = `${game.code}/${me.slot}/${crypto.randomUUID()}.jpg`;
+    const path = `${game.code}/${me.slot}/${uuidv4()}.jpg`;
 
     const { error: upErr } = await supabase.storage.from("photos").upload(path, blob, {
       contentType: "image/jpeg", upsert: false,
@@ -515,6 +527,17 @@ async function enterReveal() {
 
   showScreen("reveal");
 }
+
+$("btn-new-game").addEventListener("click", () => {
+  stopPolling();
+  stopTicking();
+  clearLocalGame();
+  game = null; me = null; partner = null;
+  myPhotos = []; partnerPhotoCount = 0; revealed = false;
+  $("home-error").hidden = true;
+  $("join-code").value = "";
+  showScreen("home");
+});
 
 // ---------- boot ----------
 

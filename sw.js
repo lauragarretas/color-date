@@ -1,4 +1,4 @@
-const CACHE = "color-date-v1";
+const CACHE = "color-date-v2";
 const SHELL = [
   "./",
   "./index.html",
@@ -27,16 +27,19 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== location.origin) return; // deja pasar Supabase y CDNs sin tocar
 
+  // Network-first: siempre intenta traer la versión más reciente del
+  // servidor; solo recurre a la caché si no hay conexión. Así, un despliegue
+  // nuevo (ej. una corrección en config.js) llega de inmediato en vez de
+  // quedarse atascado en la copia cacheada de la primera visita.
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).then((res) => {
+    fetch(event.request)
+      .then((res) => {
         if (res.ok) {
           const copy = res.clone();
           caches.open(CACHE).then((cache) => cache.put(event.request, copy));
         }
         return res;
-      }).catch(() => cached);
-    })
+      })
+      .catch(() => caches.match(event.request))
   );
 });

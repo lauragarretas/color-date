@@ -328,7 +328,7 @@ function showMyColor(next) {
   $("mycolor-swatch").style.background = me.color_hex;
   $("mycolor-name").textContent = me.color_name;
   showScreen("mycolor");
-  $("btn-mycolor-continue").onclick = () => next();
+  setTimeout(next, 2400);
 }
 
 // ---------- flow: waiting ----------

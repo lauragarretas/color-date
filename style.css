@@ -43,8 +43,12 @@ html, body {
 .screen {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
   animation: fade-in 0.25s ease;
+}
+
+.screen[hidden] {
+  display: none;
 }
 
 @keyframes fade-in {

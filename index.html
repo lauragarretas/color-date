@@ -19,6 +19,11 @@
     <p class="tagline">Dos colores. 24 horas. A ver quién se acerca más.</p>
 
     <div class="card">
+      <label for="player-name">Tu nombre</label>
+      <input id="player-name" type="text" maxlength="24" placeholder="Ej. Laura" />
+    </div>
+
+    <div class="card">
       <h2>Nueva partida</h2>
       <label for="photo-limit">Nº de fotos por persona (1-30)</label>
       <input id="photo-limit" type="number" inputmode="numeric" min="1" max="30" value="10" />
@@ -35,12 +40,19 @@
     <p id="home-error" class="error" hidden></p>
   </section>
 
+  <!-- MY COLOR (mismo paso para quien crea y quien se une) -->
+  <section id="screen-mycolor" class="screen" hidden>
+    <h1 class="logo small">Color&nbsp;Date</h1>
+    <div class="swatch-big" id="mycolor-swatch"></div>
+    <p class="color-name" id="mycolor-name"></p>
+    <p class="hint">Este es tu color. Guárdalo en secreto hasta el revelado final.</p>
+    <button id="btn-mycolor-continue" class="btn btn-primary">Continuar</button>
+  </section>
+
   <!-- WAITING -->
   <section id="screen-waiting" class="screen" hidden>
     <h1 class="logo small">Color&nbsp;Date</h1>
-    <div class="swatch-big" id="waiting-swatch"></div>
-    <p class="color-name" id="waiting-color-name"></p>
-    <p class="hint">Ese es tu color. Compártelo con tu pareja para que se una:</p>
+    <p class="hint">Comparte este código con tu pareja para que se una:</p>
     <div class="code-box" id="waiting-code"></div>
     <button id="btn-copy-code" class="btn">Copiar código</button>
     <p class="hint spinner-line"><span class="dot"></span> Esperando a que se una...</p>
@@ -90,6 +102,11 @@
     <div class="reveal-winner" id="reveal-winner"></div>
 
     <div class="reveal-players" id="reveal-players"></div>
+
+    <div class="reveal-actions">
+      <button id="btn-copy-result-link" class="btn">🔗 Copiar enlace</button>
+      <button id="btn-download-result" class="btn">⬇️ Descargar imagen</button>
+    </div>
 
     <button id="btn-new-game" class="btn btn-primary">Jugar otra vez</button>
   </section>

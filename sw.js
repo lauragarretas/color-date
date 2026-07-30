@@ -1,4 +1,4 @@
-const CACHE = "color-date-v2";
+const CACHE = "color-date-v4";
 const SHELL = [
   "./",
   "./index.html",

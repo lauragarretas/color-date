@@ -56,17 +56,23 @@ prefieres.)
 
 ## Cómo se juega
 
-1. Uno de los dos pulsa **Crear partida**, elige el número de fotos y
+1. Cada uno escribe su nombre arriba del todo.
+2. Uno de los dos pulsa **Crear partida**, elige el número de fotos y
    comparte el código de 8 caracteres que aparece.
-2. El otro pulsa **Unirse a partida** e introduce el código.
-3. En cuanto ambos estáis dentro empieza la cuenta atrás de 24h. Cada uno ve
-   solo su propio color — el del otro se mantiene en secreto.
-4. Vais añadiendo fotos (cámara o galería) que creáis que se acercan a
+3. El otro pulsa **Unirse a partida** e introduce el código.
+4. Nada más crear o unirse, cada uno ve su propio color en grande (pantalla
+   "Este es tu color") — igual para los dos. En cuanto ambos estáis dentro
+   empieza la cuenta atrás de 24h. El color del otro se mantiene en secreto.
+5. Vais añadiendo fotos (cámara o galería) que creáis que se acercan a
    vuestro color, hasta el límite elegido.
-5. La partida se revela en cuanto **pasan las 24h** o **ambos llegáis al
-   límite de fotos**, lo que ocurra antes. Ahí veis el color de cada uno, la
-   cuadrícula de fotos, y el porcentaje de la foto que más se acercó al color
-   de cada persona.
+6. La partida se revela en cuanto **pasan las 24h** o **ambos llegáis al
+   límite de fotos**, lo que ocurra antes. Ahí veis el nombre y color de cada
+   uno, la cuadrícula de fotos, y el porcentaje de la foto que más se acercó
+   al color de cada persona.
+7. Desde el revelado podéis **copiar un enlace permanente** al resultado
+   (para guardarlo en favoritos o mandarlo por WhatsApp — funciona aunque
+   borres los datos del navegador) o **descargar una imagen** con el
+   resumen para guardarla como recuerdo.
 
 ## Notas técnicas / limitaciones asumidas
 
@@ -89,3 +95,7 @@ prefieres.)
 - El contador de 24h arranca en el momento en que **se une el segundo
   jugador** a la partida, no al crearla. Hasta entonces, quien la creó ve la
   pantalla de espera sin cuenta atrás.
+- El enlace guardado (`?ver=CODIGO`) funciona en modo solo lectura: no hace
+  falta haber jugado en ese navegador para verlo, basta con conocer el
+  código de la partida (igual de "privado por oscuridad" que el resto de la
+  app).

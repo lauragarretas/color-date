@@ -16,6 +16,7 @@ create table if not exists players (
   game_code text not null references games(code) on delete cascade,
   slot integer not null check (slot in (1, 2)),
   device_id text not null,
+  player_name text not null default 'Jugador',
   color_hex text not null,
   color_name text not null,
   joined_at timestamptz not null default now(),

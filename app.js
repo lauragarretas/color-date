@@ -113,6 +113,7 @@ function clearLocalGame() {
 const $ = (id) => document.getElementById(id);
 const screens = {
   home: $("screen-home"),
+  mycolor: $("screen-mycolor"),
   waiting: $("screen-waiting"),
   playing: $("screen-playing"),
   reveal: $("screen-reveal"),
@@ -140,6 +141,13 @@ let pollTimer = null;
 let tickTimer = null;
 let myPhotos = []; // {id, storage_path, similarity}
 let revealed = false;
+let viewOnly = false; // true cuando se abre vía enlace ?ver=CODIGO
+let lastReveal = null; // { scored, winnerText } para descargar la imagen
+
+function getPlayerName() {
+  const raw = $("player-name").value.trim();
+  return raw ? raw.slice(0, 24) : "Jugador";
+}
 
 // ---------- image processing ----------
 
@@ -219,6 +227,7 @@ $("btn-create").addEventListener("click", async () => {
   const limit = clamp(parseInt($("photo-limit").value, 10) || 10, 1, 30);
   const btn = $("btn-create");
   btn.disabled = true;
+  $("home-error").hidden = true;
   try {
     const color = randomColor();
     let code, gameRow;
@@ -235,13 +244,14 @@ $("btn-create").addEventListener("click", async () => {
     if (!gameRow) throw new Error("No se pudo crear la partida, inténtalo de nuevo.");
 
     const { data: playerRow, error: pErr } = await supabase.from("players").insert({
-      game_code: code, slot: 1, device_id: getDeviceId(), color_hex: color.hex, color_name: color.name,
+      game_code: code, slot: 1, device_id: getDeviceId(),
+      player_name: getPlayerName(), color_hex: color.hex, color_name: color.name,
     }).select().single();
     if (pErr) throw pErr;
 
     saveLocalGame({ code, playerId: playerRow.id, slot: 1 });
     game = gameRow; me = playerRow; partner = null;
-    enterWaiting();
+    showMyColor(() => enterWaiting());
   } catch (e) {
     showHomeError(e.message || "Error al crear la partida");
   } finally {
@@ -254,6 +264,7 @@ $("btn-join").addEventListener("click", async () => {
   const btn = $("btn-join");
   if (!code) return;
   btn.disabled = true;
+  $("home-error").hidden = true;
   try {
     let gameRow = await fetchGame(code);
     if (!gameRow) throw new Error("No existe ninguna partida con ese código.");
@@ -273,7 +284,8 @@ $("btn-join").addEventListener("click", async () => {
 
     const { data: playerRow, error: pErr } = await supabase.from("players").insert({
       game_code: code, slot: other ? (other.slot === 1 ? 2 : 1) : 1,
-      device_id: getDeviceId(), color_hex: color.hex, color_name: color.name,
+      device_id: getDeviceId(), player_name: getPlayerName(),
+      color_hex: color.hex, color_name: color.name,
     }).select().single();
     if (pErr) throw pErr;
 
@@ -296,7 +308,7 @@ $("btn-join").addEventListener("click", async () => {
 
     saveLocalGame({ code, playerId: playerRow.id, slot: playerRow.slot });
     game = gameRow; me = playerRow; partner = other || null;
-    await routeToCurrentScreen();
+    showMyColor(() => routeToCurrentScreen());
   } catch (e) {
     showHomeError(e.message || "Error al unirse a la partida");
   } finally {
@@ -310,11 +322,18 @@ function showHomeError(msg) {
   el.hidden = false;
 }
 
+// ---------- flow: mi color (mismo paso para crear y unirse) ----------
+
+function showMyColor(next) {
+  $("mycolor-swatch").style.background = me.color_hex;
+  $("mycolor-name").textContent = me.color_name;
+  showScreen("mycolor");
+  $("btn-mycolor-continue").onclick = () => next();
+}
+
 // ---------- flow: waiting ----------
 
 function enterWaiting() {
-  $("waiting-swatch").style.background = me.color_hex;
-  $("waiting-color-name").textContent = me.color_name;
   $("waiting-code").textContent = game.code;
   showScreen("waiting");
   startPolling();
@@ -473,42 +492,38 @@ async function checkReveal() {
 
 // ---------- reveal ----------
 
-async function enterReveal() {
-  if (revealed) return;
-  revealed = true;
-  stopPolling();
-  stopTicking();
-
-  const players = await fetchPlayers(game.code);
-  const allPhotos = await fetchAllPhotos(game.code);
-
+function renderReveal(players, allPhotos) {
   const scored = players.map((p) => {
     const photos = allPhotos.filter((ph) => ph.player_id === p.id);
     const best = photos.reduce((m, ph) => Math.max(m, Number(ph.similarity)), 0);
     return { player: p, photos, best };
   });
-
   scored.sort((a, b) => b.best - a.best);
-  const winnerEl = $("reveal-winner");
+
+  let winnerText;
   if (scored.length < 2) {
-    winnerEl.innerHTML = `<p class="title">Partida incompleta</p><p class="name">Tu pareja no llegó a unirse a tiempo</p>`;
+    winnerText = "Partida incompleta · tu pareja no llegó a unirse a tiempo";
   } else if (Math.abs(scored[0].best - scored[1].best) < 0.5) {
-    winnerEl.innerHTML = `<p class="title">Resultado</p><p class="name">¡Empate! (${scored[0].best.toFixed(1)}%)</p>`;
+    winnerText = `¡Empate! (${scored[0].best.toFixed(1)}%)`;
   } else {
-    winnerEl.innerHTML = `<p class="title">Se acercó más</p><p class="name">${scored[0].player.color_name} · ${scored[0].best.toFixed(1)}%</p>`;
+    winnerText = `${scored[0].player.player_name || scored[0].player.color_name} se acercó más · ${scored[0].best.toFixed(1)}%`;
   }
+
+  const winnerEl = $("reveal-winner");
+  winnerEl.innerHTML = `<p class="title">${scored.length < 2 ? "Partida incompleta" : "Resultado"}</p><p class="name">${winnerText}</p>`;
 
   const playersEl = $("reveal-players");
   playersEl.innerHTML = "";
   for (const entry of scored) {
     const card = document.createElement("div");
     card.className = "reveal-player-card";
-    const isMe = entry.player.id === me.id;
+    const isMe = me && entry.player.id === me.id;
+    const label = `${entry.player.player_name || "Jugador"} · ${entry.player.color_name}${isMe ? " (tú)" : ""}`;
     card.innerHTML = `
       <div class="reveal-player-head">
         <div class="swatch-small" style="background:${entry.player.color_hex}"></div>
         <div>
-          <p class="color-name" style="text-align:left">${entry.player.color_name}${isMe ? " (tú)" : ""}</p>
+          <p class="color-name" style="text-align:left">${label}</p>
         </div>
         <div class="reveal-score">${entry.best.toFixed(1)}%</div>
       </div>
@@ -525,7 +540,18 @@ async function enterReveal() {
     playersEl.appendChild(card);
   }
 
+  lastReveal = { scored, winnerText, code: game.code };
   showScreen("reveal");
+}
+
+async function enterReveal() {
+  if (revealed) return;
+  revealed = true;
+  stopPolling();
+  stopTicking();
+  const players = await fetchPlayers(game.code);
+  const allPhotos = await fetchAllPhotos(game.code);
+  renderReveal(players, allPhotos);
 }
 
 $("btn-new-game").addEventListener("click", () => {
@@ -533,10 +559,120 @@ $("btn-new-game").addEventListener("click", () => {
   stopTicking();
   clearLocalGame();
   game = null; me = null; partner = null;
-  myPhotos = []; partnerPhotoCount = 0; revealed = false;
+  myPhotos = []; partnerPhotoCount = 0; revealed = false; viewOnly = false;
   $("home-error").hidden = true;
   $("join-code").value = "";
+  if (history.replaceState) history.replaceState(null, "", location.pathname);
   showScreen("home");
+});
+
+$("btn-copy-result-link").addEventListener("click", async () => {
+  if (!lastReveal) return;
+  const url = `${location.origin}${location.pathname}?ver=${lastReveal.code}`;
+  try {
+    await navigator.clipboard.writeText(url);
+    toast("Enlace copiado");
+  } catch {
+    toast(url);
+  }
+});
+
+// ---------- descargar el revelado como imagen ----------
+
+function loadImageEl(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+$("btn-download-result").addEventListener("click", async () => {
+  if (!lastReveal) return;
+  const btn = $("btn-download-result");
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Generando...";
+  try {
+    const { scored, winnerText } = lastReveal;
+    const W = 900, PAD = 40, THUMB = 160, GAP = 12, COLS = 4;
+
+    const imagesByPlayer = await Promise.all(
+      scored.map((entry) =>
+        Promise.all(entry.photos.map((p) => loadImageEl(publicUrl(p.storage_path)).catch(() => null)))
+      )
+    );
+
+    const headerH = 60, winnerH = 40, blockHeaderH = 70, blockGap = 30;
+    const playerBlocks = scored.map((entry, i) => {
+      const count = imagesByPlayer[i].filter(Boolean).length;
+      const rows = Math.max(1, Math.ceil(count / COLS));
+      const gridH = rows * THUMB + (rows - 1) * GAP;
+      return { gridH, blockH: blockHeaderH + 16 + gridH };
+    });
+    const totalH = PAD + headerH + winnerH + 20 +
+      playerBlocks.reduce((s, b) => s + b.blockH + blockGap, 0) + PAD;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = totalH;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#fafafa";
+    ctx.fillRect(0, 0, W, totalH);
+
+    ctx.textBaseline = "top";
+    ctx.fillStyle = "#16161a";
+    ctx.font = "bold 28px sans-serif";
+    ctx.fillText("Color Date", PAD, PAD);
+
+    ctx.font = "16px sans-serif";
+    ctx.fillStyle = "#6b6b74";
+    ctx.fillText(winnerText, PAD, PAD + 38);
+
+    let cy = PAD + headerH + winnerH;
+    scored.forEach((entry, i) => {
+      const block = playerBlocks[i];
+      ctx.fillStyle = entry.player.color_hex;
+      ctx.fillRect(PAD, cy, 50, 50);
+      ctx.fillStyle = "#16161a";
+      ctx.font = "bold 20px sans-serif";
+      ctx.fillText(`${entry.player.player_name || "Jugador"} · ${entry.player.color_name}`, PAD + 64, cy + 4);
+      ctx.font = "16px sans-serif";
+      ctx.fillStyle = "#6b6b74";
+      ctx.fillText(`${entry.best.toFixed(1)}%`, PAD + 64, cy + 30);
+      cy += blockHeaderH + 16;
+
+      imagesByPlayer[i].forEach((img, idx) => {
+        if (!img) return;
+        const col = idx % COLS;
+        const row = Math.floor(idx / COLS);
+        const x = PAD + col * (THUMB + GAP);
+        const yy = cy + row * (THUMB + GAP);
+        const s = Math.min(img.naturalWidth, img.naturalHeight);
+        const sx = (img.naturalWidth - s) / 2;
+        const sy = (img.naturalHeight - s) / 2;
+        ctx.drawImage(img, sx, sy, s, s, x, yy, THUMB, THUMB);
+      });
+      cy += block.gridH + blockGap;
+    });
+
+    const blob = await new Promise((res) => canvas.toBlob(res, "image/png"));
+    if (!blob) throw new Error("No se pudo generar la imagen");
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `color-date-${lastReveal.code}.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    toast("No se pudo generar la imagen (revisa la conexión)");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
 });
 
 // ---------- boot ----------
@@ -550,7 +686,26 @@ async function routeToCurrentScreen() {
   }
 }
 
+async function bootViewOnly(code) {
+  try {
+    const gameRow = await fetchGame(code);
+    if (!gameRow) throw new Error("No se encontró ninguna partida con ese código.");
+    const players = await fetchPlayers(code);
+    if (players.length < 2) throw new Error("Esa partida no llegó a completarse.");
+    game = gameRow;
+    viewOnly = true;
+    const allPhotos = await fetchAllPhotos(code);
+    renderReveal(players, allPhotos);
+  } catch (e) {
+    showScreen("home");
+    showHomeError(e.message || "No se pudo cargar ese resultado.");
+  }
+}
+
 async function boot() {
+  const viewCode = new URLSearchParams(location.search).get("ver");
+  if (viewCode) { await bootViewOnly(viewCode.trim().toUpperCase()); return; }
+
   const local = loadLocalGame();
   if (!local) { showScreen("home"); return; }
   try {
